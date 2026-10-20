@@ -5,178 +5,207 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { createIcons, icons } from "lucide";
 
-// This component reproduces, almost verbatim, all the imperative DOM/animation logic
-// that used to live in the page's <script> tag (typewriter, hero robot, cloud companion,
-// experience timeline, scroll reveals, counters, mobile menu). It renders nothing itself;
-// it just runs once after the page mounts.
+// Imperative effects for the existing Three.js scenes, timeline, icons, and navigation.
+// Scroll reveals and counters are handled by MotionController.
 export default function ClientEffects() {
   useEffect(() => {
-    // Cheap guard against React StrictMode's dev-only double effect invocation:
-    // clear any canvases from a previous run before the scenes below (re)create theirs.
-    const robotMountGuard = document.getElementById('robot-mount');
-    if (robotMountGuard) robotMountGuard.innerHTML = '';
-    const cloudMountGuard = document.getElementById('cloud-robot-mount');
-    if (cloudMountGuard) cloudMountGuard.innerHTML = '';
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sceneLoopCleanups = [];
+    const effectCleanups = [];
+
+    function disposeScene(scene, renderer, extraResources = []) {
+      const geometries = new Set();
+      const materials = new Set();
+      const textures = new Set();
+
+      scene.traverse((object) => {
+        if (object.geometry) geometries.add(object.geometry);
+        if (object.material) {
+          const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
+          objectMaterials.forEach((material) => materials.add(material));
+        }
+      });
+      extraResources.forEach((resource) => {
+        if (resource?.isTexture) textures.add(resource);
+        else if (resource?.isMaterial) materials.add(resource);
+        else if (resource?.isBufferGeometry) geometries.add(resource);
+      });
+      materials.forEach((material) => {
+        Object.values(material).forEach((value) => {
+          if (value?.isTexture) textures.add(value);
+        });
+        material.dispose();
+      });
+      geometries.forEach((geometry) => geometry.dispose());
+      textures.forEach((texture) => texture.dispose());
+      renderer.dispose();
+      renderer.domElement.remove();
+    }
+
+    function runSceneLoop(drawFrame, container, onModeChange) {
+      let frameId = null;
+      let disposed = false;
+      let lastFrameTime = null;
+      let visible = false;
+      const minFrameInterval = window.matchMedia('(max-width: 768px)').matches ? 32 : 0;
+
+      const canRender = () => visible && !document.hidden;
+      const drawSafely = (delta) => {
+        try {
+          drawFrame(delta);
+          return true;
+        } catch (error) {
+          disposed = true;
+          delete container.dataset.webgl;
+          container.querySelector(':scope > canvas')?.remove();
+          console.error('[portfolio] 3D scene rendering stopped:', error);
+          return false;
+        }
+      };
+
+      const tick = (now = performance.now()) => {
+        frameId = null;
+        if (disposed || !canRender()) return;
+        if (lastFrameTime !== null && now - lastFrameTime < minFrameInterval) {
+          frameId = requestAnimationFrame(tick);
+          return;
+        }
+        const delta = lastFrameTime === null ? 0 : Math.min((now - lastFrameTime) / 1000, 0.05);
+        lastFrameTime = now;
+        if (!drawSafely(delta)) return;
+        if (!motionPreference.matches) frameId = requestAnimationFrame(tick);
+      };
+
+      const syncMotion = () => {
+        if (frameId !== null) cancelAnimationFrame(frameId);
+        frameId = null;
+        lastFrameTime = null;
+        onModeChange?.(motionPreference.matches);
+        if (canRender()) tick(); // Reduced motion draws one static frame.
+      };
+
+      let visibilityObserver = null;
+      if ('IntersectionObserver' in window) {
+        visibilityObserver = new IntersectionObserver(([entry]) => {
+          visible = entry.isIntersecting;
+          syncMotion();
+        }, { threshold: 0, rootMargin: '80px 0px' });
+        visibilityObserver.observe(container);
+      } else {
+        visible = true;
+        syncMotion();
+      }
+      motionPreference.addEventListener('change', syncMotion);
+      document.addEventListener('visibilitychange', syncMotion);
+      sceneLoopCleanups.push(() => {
+        disposed = true;
+        if (frameId !== null) cancelAnimationFrame(frameId);
+        visibilityObserver?.disconnect();
+        motionPreference.removeEventListener('change', syncMotion);
+        document.removeEventListener('visibilitychange', syncMotion);
+      });
+      return {
+        renderOnce() {
+          if (!disposed && canRender()) drawSafely(0);
+        }
+      };
+    }
+
+    function getScenePixelRatio() {
+      const maxRatio = window.matchMedia('(max-width: 768px)').matches ? 1.25 : 1.75;
+      return Math.min(window.devicePixelRatio || 1, maxRatio);
+    }
 
         function safeIcons() {
           try { createIcons({ icons }); } catch (err) { console.error('[portfolio] icon rendering failed:', err); }
         }
         safeIcons();
 
-        // ===== Mobile Navbar Toggle =====
+        // ===== Mobile navigation and active section =====
         const menuToggle = document.getElementById('menu-toggle');
         const navLinks = document.getElementById('nav-links');
-        const menuIcon = document.getElementById('menu-icon');
-
-        menuToggle.addEventListener('click', () => {
-          navLinks.classList.toggle('active');
-          const isOpen = navLinks.classList.contains('active');
-          menuIcon.setAttribute('data-lucide', isOpen ? 'x' : 'menu');
+        function setMenuIcon(name) {
+          const icon = menuToggle?.querySelector('[data-lucide]');
+          if (icon) icon.setAttribute('data-lucide', name);
           safeIcons();
-        });
+        }
 
-        navLinks.querySelectorAll('a').forEach(link => {
-          link.addEventListener('click', () => {
-            navLinks.classList.remove('active');
-            menuIcon.setAttribute('data-lucide', 'menu');
-            safeIcons();
-          });
-        });
-
-        // ===== Typewriter =====
-        const ROLES = ["AI Tools Developer", "Frontend Engineer", "Computer Engineering Graduate", "Teaching Assistant"];
-        let wordIndex = 0, charIndex = 0, isDeleting = false;
-        const typewriterElement = document.getElementById("typewriter-text");
-
-        function type() {
-          const currentWord = ROLES[wordIndex % ROLES.length];
-          typewriterElement.textContent = isDeleting
-            ? currentWord.substring(0, charIndex--)
-            : currentWord.substring(0, charIndex++);
-          let delay = isDeleting ? 45 : 90;
-          if (!isDeleting && charIndex === currentWord.length + 1) {
-            delay = 1400;
-            isDeleting = true;
-          } else if (isDeleting && charIndex === 0) {
-            isDeleting = false;
-            wordIndex++;
-            delay = 300;
+        if (menuToggle && navLinks) {
+          function setMenuOpen(isOpen) {
+            navLinks.classList.toggle('active', isOpen);
+            menuToggle.setAttribute('aria-expanded', String(isOpen));
+            menuToggle.setAttribute('aria-label', isOpen ? 'Close navigation' : 'Open navigation');
+            setMenuIcon(isOpen ? 'x' : 'menu');
           }
-          setTimeout(type, delay);
-        }
 
-        // ===== توهّج يتبع الفأرة داخل كاردات الديسكفري =====
-        function initCardGlow() {
-          document.querySelectorAll('.discovery-card').forEach(card => {
-            const glow = document.createElement('span');
-            glow.className = 'card-glow';
-            card.appendChild(glow);
-            card.addEventListener('pointermove', (e) => {
-              const rect = card.getBoundingClientRect();
-              card.style.setProperty('--mx', `${e.clientX - rect.left}px`);
-              card.style.setProperty('--my', `${e.clientY - rect.top}px`);
+          const onMenuClick = () => setMenuOpen(!navLinks.classList.contains('active'));
+          const onNavClick = (event) => {
+            if (event.target.closest('a')) setMenuOpen(false);
+          };
+          const onEscape = (event) => {
+            if (event.key === 'Escape' && navLinks.classList.contains('active')) {
+              setMenuOpen(false);
+              menuToggle.focus();
+            }
+          };
+          const onOutsidePointer = (event) => {
+            if (navLinks.classList.contains('active') && !event.target.closest('.navbar')) setMenuOpen(false);
+          };
+          menuToggle.addEventListener('click', onMenuClick);
+          navLinks.addEventListener('click', onNavClick);
+          document.addEventListener('keydown', onEscape);
+          document.addEventListener('pointerdown', onOutsidePointer);
+          effectCleanups.push(() => {
+            menuToggle.removeEventListener('click', onMenuClick);
+            navLinks.removeEventListener('click', onNavClick);
+            document.removeEventListener('keydown', onEscape);
+            document.removeEventListener('pointerdown', onOutsidePointer);
+          });
+
+          const sectionLinks = Array.from(navLinks.querySelectorAll('a[href^="#"]'))
+            .map((link) => ({ link, section: document.getElementById(link.getAttribute('href').slice(1)) }))
+            .filter(({ section }) => section);
+          if (sectionLinks.length) {
+            let scrollFrame = null;
+            const updateActiveSection = () => {
+              scrollFrame = null;
+              const referenceY = window.innerHeight * 0.38;
+              let current = sectionLinks[0];
+              sectionLinks.forEach((candidate) => {
+                if (candidate.section.getBoundingClientRect().top <= referenceY) current = candidate;
+              });
+              sectionLinks.forEach(({ link }) => {
+                const active = link === current.link;
+                link.classList.toggle('active', active);
+                if (active) link.setAttribute('aria-current', 'location');
+                else link.removeAttribute('aria-current');
+              });
+            };
+            const onScroll = () => {
+              if (scrollFrame === null) scrollFrame = requestAnimationFrame(updateActiveSection);
+            };
+            updateActiveSection();
+            window.addEventListener('scroll', onScroll, { passive: true });
+            window.addEventListener('resize', onScroll, { passive: true });
+            effectCleanups.push(() => {
+              window.removeEventListener('scroll', onScroll);
+              window.removeEventListener('resize', onScroll);
+              if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
             });
-          });
-        }
-
-        // ===== عدّاد تصاعدي للأرقام =====
-        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-        function prepareCounters() {
-          document.querySelectorAll('.stat-number').forEach(el => {
-            const match = el.textContent.trim().match(/^([\d.]+)(.*)$/);
-            if (!match) return;
-            el.dataset.target = match[1];
-            el.dataset.suffix = match[2];
-            if (!prefersReducedMotion) el.textContent = '0' + match[2];
-          });
-        }
-
-        function animateCounter(el) {
-          if (prefersReducedMotion || el.dataset.counted || !el.dataset.target) return;
-          el.dataset.counted = 'true';
-          const target = parseFloat(el.dataset.target);
-          const suffix = el.dataset.suffix || '';
-          const isDecimal = el.dataset.target.includes('.');
-          const duration = 1300;
-          const startTime = performance.now();
-          function step(now) {
-            const progress = Math.min((now - startTime) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            const value = target * eased;
-            el.textContent = (isDecimal ? value.toFixed(1) : Math.round(value)) + suffix;
-            if (progress < 1) requestAnimationFrame(step);
           }
-          requestAnimationFrame(step);
-        }
-
-        // ===== أنيميشن التمرير للكاردات وعناصر المهارات =====
-        function animateElementsOnScroll() {
-          // كاردات الديسكفري
-          const cards = document.querySelectorAll('.discovery-card');
-          const observerCards = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-                const statNumber = entry.target.querySelector('.stat-number');
-                if (statNumber) animateCounter(statNumber);
-                observerCards.unobserve(entry.target);
-              }
-            });
-          }, { threshold: 0.15, rootMargin: '0px 0px -30px 0px' });
-          cards.forEach(card => observerCards.observe(card));
-
-          // عناصر قسم المهارات (الأعمدة الثلاثة)
-          const skillEls = document.querySelectorAll('.skills-col-left, .lang-box, .comp-box');
-          const observerSkills = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-                observerSkills.unobserve(entry.target);
-              }
-            });
-          }, { threshold: 0.15, rootMargin: '0px 0px -30px 0px' });
-          skillEls.forEach(el => observerSkills.observe(el));
-        }
-
-        // ===== أنيميشن ظهور كاردات المشاريع عند السكرول =====
-        function animateProjectsOnScroll() {
-          const cards = document.querySelectorAll('.project-card');
-          const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-                observer.unobserve(entry.target);
-              }
-            });
-          }, { threshold: 0.15, rootMargin: '0px 0px -30px 0px' });
-          cards.forEach(card => observer.observe(card));
-        }
-
-        // ===== أنيميشن ظهور قسم Contact عند السكرول =====
-        function animateContactOnScroll() {
-          const els = document.querySelectorAll('.contact-left, .contact-right');
-          const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-                observer.unobserve(entry.target);
-              }
-            });
-          }, { threshold: 0.15, rootMargin: '0px 0px -30px 0px' });
-          els.forEach(el => observer.observe(el));
         }
 
         // ===== Three.js Robot Scene =====
         function initRobotScene() {
           const container = document.getElementById('robot-mount');
           if (!container) return;
+          container.querySelectorAll(':scope > canvas').forEach((canvas) => canvas.remove());
           const scene = new THREE.Scene();
-          const camera = new THREE.PerspectiveCamera(32, container.clientWidth / container.clientHeight, 0.1, 100);
+          const camera = new THREE.PerspectiveCamera(32, Math.max(container.clientWidth, 1) / Math.max(container.clientHeight, 1), 0.1, 100);
           camera.position.set(0, 0.2, 7.8);
           const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-          renderer.setSize(container.clientWidth, container.clientHeight);
-          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          renderer.setPixelRatio(getScenePixelRatio());
+          renderer.setSize(Math.max(container.clientWidth, 1), Math.max(container.clientHeight, 1));
           renderer.setClearColor(0x000000, 0);
           renderer.shadowMap.enabled = true;
           renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -187,6 +216,7 @@ export default function ClientEffects() {
           controls.enablePan = false;
           controls.enableZoom = false;
           controls.target.set(0, 0.1, 0);
+          const finePointer = window.matchMedia('(pointer: fine)');
 
           const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
           scene.add(ambientLight);
@@ -418,8 +448,28 @@ export default function ClientEffects() {
           let greetTimer = 0;
           const GREET_DURATION = 1.8;
           let pointerDownPos = null;
-          renderer.domElement.addEventListener('pointerdown', (e) => { pointerDownPos = { x: e.clientX, y: e.clientY }; });
-          renderer.domElement.addEventListener('pointerup', (e) => {
+          let statusTimer = null;
+          let sceneLoop = null;
+          const waveButton = document.getElementById('robot-wave-button');
+          const robotStatus = document.getElementById('robot-status');
+          const startWave = () => {
+            if (motionPreference.matches) {
+              rightArmObj.armGroup.rotation.z = rightArmObj.defaultZ + 0.45;
+              rightArmObj.armGroup.rotation.x = -0.15;
+              sceneLoop?.renderOnce();
+            } else {
+              greetTimer = GREET_DURATION;
+            }
+            if (robotStatus) {
+              robotStatus.textContent = 'The robot waves hello.';
+              if (statusTimer !== null) window.clearTimeout(statusTimer);
+              statusTimer = window.setTimeout(() => { robotStatus.textContent = ''; }, 2800);
+            }
+          };
+          const onPointerDown = (event) => {
+            pointerDownPos = { x: event.clientX, y: event.clientY };
+          };
+          const onPointerUp = (e) => {
             if (!pointerDownPos) return;
             const movedDist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
             pointerDownPos = null;
@@ -429,22 +479,42 @@ export default function ClientEffects() {
             pointerNdc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
             raycaster.setFromCamera(pointerNdc, camera);
             const hits = raycaster.intersectObject(clickCollider, false);
-            if (hits.length > 0) greetTimer = GREET_DURATION;
-          });
+            if (hits.length > 0) startWave();
+          };
 
           const mouse = { x: 0, y: 0 };
           const headWorldPos = new THREE.Vector3();
           const dummyObject = new THREE.Object3D();
           const cameraRight = new THREE.Vector3();
-          document.addEventListener('pointermove', (e) => { mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1; }, { passive: true });
-          window.addEventListener('resize', () => { camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); });
+          const onPointerMove = (event) => {
+            if (!finePointer.matches || motionPreference.matches) return;
+            const rect = renderer.domElement.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            mouse.x = THREE.MathUtils.clamp(((event.clientX - rect.left) / rect.width) * 2 - 1, -1, 1);
+            mouse.y = THREE.MathUtils.clamp(-((event.clientY - rect.top) / rect.height) * 2 + 1, -1, 1);
+          };
+          const onPointerLeave = () => { mouse.x = 0; mouse.y = 0; pointerDownPos = null; };
+          const onResize = () => {
+            const width = Math.max(container.clientWidth, 1);
+            const height = Math.max(container.clientHeight, 1);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setPixelRatio(getScenePixelRatio());
+            renderer.setSize(width, height);
+            sceneLoop?.renderOnce();
+          };
+          renderer.domElement.addEventListener('pointerdown', onPointerDown);
+          renderer.domElement.addEventListener('pointerup', onPointerUp);
+          renderer.domElement.addEventListener('pointercancel', onPointerLeave);
+          renderer.domElement.addEventListener('pointermove', onPointerMove, { passive: true });
+          renderer.domElement.addEventListener('pointerleave', onPointerLeave);
+          waveButton?.addEventListener('click', startWave);
+          window.addEventListener('resize', onResize, { passive: true });
 
-          const clock = new THREE.Clock();
-          function animate() {
-            requestAnimationFrame(animate);
+          let elapsedTime = 0;
+          function animate(dt) {
             controls.update();
-            const dt = Math.min(clock.getDelta(), 0.05);
-            const elapsedTime = clock.getElapsedTime();
+            elapsedTime += dt;
             envParticles.rotation.y = elapsedTime * 0.02;
             ringGroup.rotation.y = elapsedTime * 0.7;
             textOrbitGroup.rotation.y = elapsedTime * 0.25;
@@ -452,7 +522,7 @@ export default function ClientEffects() {
             const posArr = smokeParticles.geometry.attributes.position.array;
             for (let i = 0; i < smokeCount; i++) {
               const p = smokeData[i];
-              p.y -= p.speedY; p.life += 0.012;
+              p.y -= p.speedY * dt * 60; p.life += 0.012 * dt * 60;
               const currRadius = p.baseRadius + (p.life * p.spreadRate);
               p.x = Math.cos(p.angle + elapsedTime * 0.8) * currRadius;
               p.z = Math.sin(p.angle + elapsedTime * 0.8) * currRadius;
@@ -473,7 +543,7 @@ export default function ClientEffects() {
             dummyObject.rotateOnWorldAxis(camera.up, mouse.x * 0.5);
             cameraRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
             dummyObject.rotateOnWorldAxis(cameraRight, -mouse.y * 0.35);
-            headGroup.quaternion.slerp(dummyObject.quaternion, 0.08);
+            headGroup.quaternion.slerp(dummyObject.quaternion, 1 - Math.exp(-5 * dt));
             robotGroup.position.y = -0.1 + Math.sin(elapsedTime * 1.8) * 0.05;
 
             if (greetTimer > 0) {
@@ -486,26 +556,64 @@ export default function ClientEffects() {
               if (greetTimer <= 0) { rightArmObj.armGroup.rotation.z = rightArmObj.defaultZ; rightArmObj.armGroup.rotation.x = 0.08; }
             }
             renderer.render(scene, camera);
+            if (container.dataset.webgl !== 'ready') container.dataset.webgl = 'ready';
           }
-          animate();
+          const updateTheme = () => {
+            const isLight = document.documentElement.dataset.theme === 'light';
+            ambientLight.intensity = isLight ? 0.7 : 0.4;
+            mainLight.intensity = isLight ? 1.4 : 1.2;
+            cornerLight.intensity = isLight ? 2.4 : 3.5;
+            cornerLight.color.setHex(isLight ? 0x168db5 : 0x00f3ff);
+            bodyMaterial.color.setHex(isLight ? 0xbacbd9 : 0xe2e8f0);
+            cyanGlowMat.color.setHex(isLight ? 0x087fa8 : 0x00f3ff);
+            envParticlesMat.opacity = isLight ? 0.35 : 0.5;
+            sceneLoop?.renderOnce();
+          };
+          window.addEventListener('portfolio:themechange', updateTheme);
+          updateTheme();
+          sceneLoop = runSceneLoop(animate, container, (reduced) => {
+            controls.enabled = !reduced && finePointer.matches;
+            controls.enableDamping = !reduced;
+            if (!reduced) {
+              rightArmObj.armGroup.rotation.z = rightArmObj.defaultZ;
+              rightArmObj.armGroup.rotation.x = 0.08;
+            }
+          });
+          effectCleanups.push(() => {
+            renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+            renderer.domElement.removeEventListener('pointerup', onPointerUp);
+            renderer.domElement.removeEventListener('pointercancel', onPointerLeave);
+            renderer.domElement.removeEventListener('pointermove', onPointerMove);
+            renderer.domElement.removeEventListener('pointerleave', onPointerLeave);
+            waveButton?.removeEventListener('click', startWave);
+            window.removeEventListener('resize', onResize);
+            window.removeEventListener('portfolio:themechange', updateTheme);
+            if (statusTimer !== null) window.clearTimeout(statusTimer);
+            if (robotStatus) robotStatus.textContent = '';
+            controls.dispose();
+            disposeScene(scene, renderer);
+            delete container.dataset.webgl;
+          });
         }
 
         // ===== Three.js: الغيمة التقنية المرافقة لقسم Experience =====
         function initCloudCompanion() {
           const container = document.getElementById('cloud-robot-mount');
-          if (!container || typeof THREE === 'undefined') return;
+          if (!container) return;
+          container.querySelectorAll(':scope > canvas').forEach((canvas) => canvas.remove());
 
           const scene = new THREE.Scene();
-          const camera = new THREE.PerspectiveCamera(32, container.clientWidth / container.clientHeight, 0.1, 100);
+          const camera = new THREE.PerspectiveCamera(32, Math.max(container.clientWidth, 1) / Math.max(container.clientHeight, 1), 0.1, 100);
           camera.position.set(0, 0.1, 7.6);
 
           const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-          renderer.setSize(container.clientWidth, container.clientHeight);
-          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          renderer.setPixelRatio(getScenePixelRatio());
+          renderer.setSize(Math.max(container.clientWidth, 1), Math.max(container.clientHeight, 1));
           renderer.setClearColor(0x000000, 0);
           container.appendChild(renderer.domElement);
 
-          scene.add(new THREE.AmbientLight(0xffffff, 0.72));
+          const ambientLight = new THREE.AmbientLight(0xffffff, 0.72);
+          scene.add(ambientLight);
           const key = new THREE.DirectionalLight(0xffffff, 0.95);
           key.position.set(3, 4, 5);
           scene.add(key);
@@ -722,19 +830,24 @@ export default function ClientEffects() {
             steams.push(s);
           }
 
-          window.addEventListener('resize', () => {
-            camera.aspect = container.clientWidth / container.clientHeight;
+          let sceneLoop = null;
+          const onResize = () => {
+            const width = Math.max(container.clientWidth, 1);
+            const height = Math.max(container.clientHeight, 1);
+            camera.aspect = width / height;
             camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-          });
+            renderer.setPixelRatio(getScenePixelRatio());
+            renderer.setSize(width, height);
+            sceneLoop?.renderOnce();
+          };
+          window.addEventListener('resize', onResize, { passive: true });
 
-          const clock = new THREE.Clock();
           let blinkTimer = 2.4 + Math.random() * 2;
           let blinkHold = 0;
-          function animate() {
-            requestAnimationFrame(animate);
-            const delta = Math.min(clock.getDelta(), 0.05);
-            const elapsed = clock.elapsedTime;
+          let elapsed = 0;
+          let isLightTheme = false;
+          function animate(delta) {
+            elapsed += delta;
 
             // طفو وميلان هادئ (بدون تتبع المؤشر)
             cloudGroup.position.y = Math.sin(elapsed * 1.3) * 0.1;
@@ -787,8 +900,8 @@ export default function ClientEffects() {
               s.material.opacity = 0.48 * Math.sin(Math.PI * p);
             });
 
-            cyanGlow.intensity = 2.4 + Math.sin(elapsed * 2.2) * 0.5;
-            glowSprite.material.opacity = 0.36 + Math.sin(elapsed * 1.6) * 0.1;
+            cyanGlow.intensity = (isLightTheme ? 1.6 : 2.4) + Math.sin(elapsed * 2.2) * (isLightTheme ? 0.2 : 0.5);
+            glowSprite.material.opacity = (isLightTheme ? 0.22 : 0.36) + Math.sin(elapsed * 1.6) * (isLightTheme ? 0.04 : 0.1);
             antennaTip.scale.setScalar(1 + Math.sin(elapsed * 2.4) * 0.2);
             screenLight.intensity = 1.05 + Math.sin(elapsed * 1.8) * 0.25;
 
@@ -801,7 +914,24 @@ export default function ClientEffects() {
 
             renderer.render(scene, camera);
           }
-          animate();
+          const updateTheme = () => {
+            isLightTheme = document.documentElement.dataset.theme === 'light';
+            ambientLight.intensity = isLightTheme ? 0.85 : 0.72;
+            key.intensity = isLightTheme ? 1.05 : 0.95;
+            fill.intensity = isLightTheme ? 0.22 : 0.32;
+            cyanGlow.intensity = isLightTheme ? 1.6 : 2.4;
+            cloudMat.color.setHex(isLightTheme ? 0xc9dfec : 0xeef4ff);
+            glowSprite.material.opacity = isLightTheme ? 0.25 : 0.42;
+            sceneLoop?.renderOnce();
+          };
+          window.addEventListener('portfolio:themechange', updateTheme);
+          updateTheme();
+          sceneLoop = runSceneLoop(animate, container);
+          effectCleanups.push(() => {
+            window.removeEventListener('resize', onResize);
+            window.removeEventListener('portfolio:themechange', updateTheme);
+            disposeScene(scene, renderer, [faceOpenTex, faceClosedTex, sparkMat]);
+          });
         }
 
         // ===== التحكّم بالخط الزمني المتعرّج: كشف الصف النشط + توجيه الرفيق + الواترمارك =====
@@ -811,18 +941,8 @@ export default function ClientEffects() {
           const watermark = document.getElementById('companion-watermark');
           if (!rows.length) return;
 
-          // ظهور تدريجي للصفوف عند الوصول لها بالسكرول
-          const revealObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-                revealObserver.unobserve(entry.target);
-              }
-            });
-          }, { threshold: 0.15, rootMargin: '0px 0px -30px 0px' });
-          rows.forEach(row => revealObserver.observe(row));
-
           if (!companion || !watermark) return;
+          let watermarkTimer = null;
 
           function setActiveRow(row) {
             rows.forEach(r => {
@@ -834,22 +954,29 @@ export default function ClientEffects() {
 
             const tech = (row.dataset.tech || 'Code').toUpperCase();
             if (watermark.textContent !== tech) {
+              if (watermarkTimer !== null) window.clearTimeout(watermarkTimer);
               watermark.style.opacity = 0;
-              setTimeout(() => {
+              watermarkTimer = window.setTimeout(() => {
                 watermark.textContent = tech;
                 watermark.style.opacity = 1;
-              }, 220);
+                watermarkTimer = null;
+              }, motionPreference.matches ? 0 : 220);
             }
           }
 
-          const activeObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting) setActiveRow(entry.target);
-            });
-          }, { threshold: 0, rootMargin: '-42% 0px -42% 0px' });
-          rows.forEach(row => activeObserver.observe(row));
-
           setActiveRow(rows[0]);
+          const activeObserver = 'IntersectionObserver' in window
+            ? new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                  if (entry.isIntersecting) setActiveRow(entry.target);
+                });
+              }, { threshold: 0, rootMargin: '-42% 0px -42% 0px' })
+            : null;
+          rows.forEach((row) => activeObserver?.observe(row));
+          effectCleanups.push(() => {
+            activeObserver?.disconnect();
+            if (watermarkTimer !== null) window.clearTimeout(watermarkTimer);
+          });
         }
 
         // ===== التشغيل بعد ما الصفحة تركب (useEffect أصلاً بيضمن الـ DOM جاهز،
@@ -860,24 +987,43 @@ export default function ClientEffects() {
         function safeRun(fn, label) {
           try {
             fn();
+            return true;
           } catch (err) {
             console.error('[portfolio] "' + label + '" failed, continuing without it:', err);
+            return false;
           }
         }
 
-        safeRun(type, 'typewriter');
-        safeRun(initRobotScene, 'hero robot scene');
-        safeRun(initCloudCompanion, 'cloud companion scene');
-        safeRun(initExperienceTimeline, 'experience timeline');
-        safeRun(initCardGlow, 'card glow effect');
-        safeRun(prepareCounters, 'stat counters setup');
-        safeRun(animateElementsOnScroll, 'discovery/skills scroll reveal');
-        safeRun(animateProjectsOnScroll, 'projects scroll reveal');
-        safeRun(animateContactOnScroll, 'contact scroll reveal');
-        safeRun(() => createIcons({ icons }), 'icon rendering');
-        const onResize = () => safeRun(() => createIcons({ icons }), 'icon rendering on resize');
-        window.addEventListener('resize', onResize);
+        function initSceneNearViewport(mountId, init, label) {
+          const mount = document.getElementById(mountId);
+          if (!mount) return;
+          const start = () => {
+            if (!safeRun(init, label)) {
+              mount.querySelectorAll(':scope > canvas').forEach((canvas) => canvas.remove());
+              delete mount.dataset.webgl;
+            }
+          };
+          if (!('IntersectionObserver' in window)) {
+            start();
+            return;
+          }
+          const observer = new IntersectionObserver(([entry]) => {
+            if (!entry.isIntersecting) return;
+            observer.disconnect();
+            start();
+          }, { rootMargin: '250px 0px' });
+          observer.observe(mount);
+          effectCleanups.push(() => observer.disconnect());
+        }
 
+        initSceneNearViewport('robot-mount', initRobotScene, 'robot scene');
+        initSceneNearViewport('cloud-robot-mount', initCloudCompanion, 'cloud companion scene');
+        safeRun(initExperienceTimeline, 'experience timeline');
+
+    return () => {
+      sceneLoopCleanups.forEach((cleanup) => cleanup());
+      effectCleanups.reverse().forEach((cleanup) => cleanup());
+    };
   }, []);
 
   return null;

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Abdullah Shehada — Portfolio (Next.js)
 
 This is the Next.js (App Router) version of the portfolio, split from the original
@@ -69,4 +68,3 @@ replace a placeholder `<div>`:
   scenes work correctly.
 - The old single-file `index.html` is no longer the source of truth — make future
   content edits in this Next.js project instead.
->>>>>>> b4906d7aa34f381a6ac1f7f4748915a11389dbd1

@@ -1,0 +1,178 @@
+/* One scroll-motion vocabulary for every section and project route.
+   Content is visible by default; JavaScript only marks off-screen items pending. */
+:root {
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-duration: 620ms;
+  --motion-distance: 18px;
+  --motion-blur: 6px;
+}
+
+[data-motion-group] > [data-motion]:nth-child(2) { --motion-delay: 75ms; }
+[data-motion-group] > [data-motion]:nth-child(3) { --motion-delay: 150ms; }
+[data-motion-group] > [data-motion]:nth-child(4) { --motion-delay: 225ms; }
+[data-motion-group] > [data-motion]:nth-child(5) { --motion-delay: 300ms; }
+[data-motion-group] > [data-motion]:nth-child(6) { --motion-delay: 375ms; }
+
+/* When a heading and a grid share the same viewport, the heading leads. */
+:where(.discovery-grid, .skill-groups, .projects-featured-list, .projects-secondary-grid, .projects-archive-grid),
+.contact-right,
+.project-case-visual {
+  --motion-group-offset: 220ms;
+}
+
+[data-motion].motion-pending {
+  opacity: 0;
+  transform: translate3d(0, var(--motion-distance), 0);
+  transition: none !important;
+}
+
+[data-motion="blur"].motion-pending {
+  filter: blur(var(--motion-blur));
+}
+
+[data-motion="scale"].motion-pending {
+  transform: translate3d(0, 10px, 0) scale(0.975);
+}
+
+[data-motion="mask"].motion-pending {
+  clip-path: inset(0 0 16% 0);
+}
+
+[data-motion="line"].motion-pending {
+  transform: scaleX(0.12);
+  transform-origin: left center;
+}
+
+[data-motion].motion-entering {
+  animation: motion-fade-up var(--motion-duration) var(--motion-ease) calc(var(--motion-delay, 0ms) + var(--motion-group-offset, 0ms)) backwards;
+}
+
+[data-motion="blur"].motion-entering { animation-name: motion-blur-up; }
+[data-motion="scale"].motion-entering { animation-name: motion-scale-in; }
+[data-motion="mask"].motion-entering { animation-name: motion-mask-in; }
+[data-motion="line"].motion-entering { animation-name: motion-line-in; }
+
+@keyframes motion-fade-up {
+  from { opacity: 0; transform: translate3d(0, var(--motion-distance), 0); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes motion-blur-up {
+  from { opacity: 0; transform: translate3d(0, var(--motion-distance), 0); filter: blur(var(--motion-blur)); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+@keyframes motion-scale-in {
+  from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.975); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes motion-mask-in {
+  from { opacity: 0; transform: translate3d(0, var(--motion-distance), 0); clip-path: inset(0 0 16% 0); }
+  to { opacity: 1; transform: none; clip-path: inset(0 0 0 0); }
+}
+
+@keyframes motion-line-in {
+  from { opacity: 0; transform: scaleX(0.12); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
+/* The original grid remains fixed. This small composited light moves only
+   while a fine pointer moves, so the page background is never repainted. */
+.motion-pointer-light {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(-500px, -500px, 0);
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--primary-cyan) 9%, transparent) 0%,
+    color-mix(in srgb, var(--blue-accent) 4%, transparent) 38%,
+    transparent 72%);
+  transition: opacity 260ms ease;
+  will-change: transform, opacity;
+}
+
+/* A single progress cue gives the experience rows a shared direction. */
+.timeline-rows.timeline-progress-ready::after {
+  content: "";
+  position: absolute;
+  top: 2.5rem;
+  left: 50%;
+  z-index: 1;
+  width: 2px;
+  height: calc(100% - 5rem);
+  pointer-events: none;
+  transform: translateX(-50%) scaleY(var(--timeline-progress, 0));
+  transform-origin: center top;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--primary-cyan) 22%, transparent),
+    var(--primary-cyan));
+  box-shadow: 0 0 13px color-mix(in srgb, var(--primary-cyan) 22%, transparent);
+}
+
+.timeline-dot.active {
+  animation: none;
+}
+
+/* Keep micro-interactions in the same restrained range as the entrance motion. */
+:where(.discovery-card, .skill-group, .project-card) {
+  transition-timing-function: var(--motion-ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .discovery-card:hover .icon-wrapper {
+    transform: translateY(-2px) scale(1.03);
+  }
+
+  .project-card:hover .project-visual-image {
+    transform: scale(1.03);
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --motion-duration: 460ms;
+    --motion-distance: 10px;
+    --motion-blur: 2px;
+  }
+
+  [data-motion-group] > [data-motion]:nth-child(2) { --motion-delay: 45ms; }
+  [data-motion-group] > [data-motion]:nth-child(3) { --motion-delay: 90ms; }
+  [data-motion-group] > [data-motion]:nth-child(4) { --motion-delay: 135ms; }
+  [data-motion-group] > [data-motion]:nth-child(5) { --motion-delay: 180ms; }
+  [data-motion-group] > [data-motion]:nth-child(6) { --motion-delay: 225ms; }
+
+  :where(.discovery-grid, .skill-groups, .projects-featured-list, .projects-secondary-grid, .projects-archive-grid),
+  .contact-right,
+  .project-case-visual {
+    --motion-group-offset: 140ms;
+  }
+}
+
+@media (max-width: 968px) {
+  .timeline-rows.timeline-progress-ready::after {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-pointer-light,
+  .timeline-rows.timeline-progress-ready::after {
+    display: none;
+  }
+
+  [data-motion].motion-pending,
+  [data-motion].motion-entering {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    clip-path: none !important;
+    animation: none !important;
+  }
+}

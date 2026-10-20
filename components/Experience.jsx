@@ -1,15 +1,15 @@
 export default function Experience() {
   return (
   <section className="experience-section" id="experiences">
-    <div className="experience-header">
-      <div className="badge"><span className="badge-dot"></span> THE JOURNEY</div>
-      <h2><span className="gradient-text">Professional</span> <span style={{ color: 'var(--text-white)' }}>Evolution.</span></h2>
+    <div className="experience-header" data-motion-group>
+      <div className="badge" data-motion="fade"><span className="badge-dot"></span> THE JOURNEY</div>
+      <h2 data-motion="blur"><span className="gradient-text">Professional</span> <span style={{ color: 'var(--text-white)' }}>Evolution.</span></h2>
     </div>
 
     <div className="experience-timeline-wrap">
       <div className="timeline-rows">
 
-        <div className="timeline-row" data-tech="AI">
+        <div className="timeline-row" id="experience-ai" data-tech="AI" data-motion="fade">
           <span className="timeline-dot"></span>
           <span className="exp-side-label" aria-hidden="true">EXPERIENCE<span className="side-label-dot">.</span></span>
           <div className="exp-card">
@@ -27,7 +27,7 @@ export default function Experience() {
           </div>
         </div>
 
-        <div className="timeline-row" data-tech="React">
+        <div className="timeline-row" data-tech="React" data-motion="fade">
           <span className="timeline-dot"></span>
           <span className="exp-side-label" aria-hidden="true">EXPERIENCE<span className="side-label-dot">.</span></span>
           <div className="exp-card">
@@ -43,7 +43,7 @@ export default function Experience() {
           </div>
         </div>
 
-        <div className="timeline-row" data-tech="Humanitarian">
+        <div className="timeline-row" data-tech="Humanitarian" data-motion="fade">
           <span className="timeline-dot"></span>
           <span className="exp-side-label" aria-hidden="true">EXPERIENCE<span className="side-label-dot">.</span></span>
           <div className="exp-card">
@@ -59,7 +59,7 @@ export default function Experience() {
           </div>
         </div>
 
-        <div className="timeline-row" data-tech="Data">
+        <div className="timeline-row" data-tech="Data" data-motion="fade">
           <span className="timeline-dot"></span>
           <span className="exp-side-label" aria-hidden="true">EXPERIENCE<span className="side-label-dot">.</span></span>
           <div className="exp-card">
@@ -75,7 +75,7 @@ export default function Experience() {
           </div>
         </div>
 
-        <div className="timeline-row" data-tech="Software">
+        <div className="timeline-row" data-tech="Software" data-motion="fade">
           <span className="timeline-dot"></span>
           <span className="exp-side-label" aria-hidden="true">EXPERIENCE<span className="side-label-dot">.</span></span>
           <div className="exp-card">
@@ -92,7 +92,7 @@ export default function Experience() {
           </div>
         </div>
 
-        <div className="timeline-row" data-tech="Art">
+        <div className="timeline-row" data-tech="Art" data-motion="fade">
           <span className="timeline-dot"></span>
           <span className="exp-side-label" aria-hidden="true">EXPERIENCE<span className="side-label-dot">.</span></span>
           <div className="exp-card">
