@@ -20,10 +20,18 @@
   margin-bottom: clamp(1.75rem, 3vw, 3rem);
 }
 
-.project-card--featured:hover {
+.projects-featured-list .project-card--featured:hover,
+.projects-archive-grid .project-card--featured:hover {
   transform: none;
+  background: none;
   border-color: transparent;
   box-shadow: none;
+}
+
+/* Keep screenshot content fixed inside its frame; the frame carries the hover cue. */
+.projects-featured-list .project-card--featured:hover .project-visual-image,
+.projects-archive-grid .project-card--featured:hover .project-visual-image {
+  transform: none;
 }
 
 .project-card--featured .project-visual,

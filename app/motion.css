@@ -43,6 +43,17 @@
   transform-origin: left center;
 }
 
+/* About facts assemble like a shallow editorial tile, not another scale reveal. */
+.discovery-card[data-motion="about-tile"] {
+  --about-tilt: 6deg;
+  --about-lift: 16px;
+}
+
+.discovery-card[data-motion="about-tile"].motion-pending {
+  transform: perspective(900px) rotateX(var(--about-tilt)) translate3d(0, var(--about-lift), 0);
+  transform-origin: center bottom;
+}
+
 [data-motion].motion-entering {
   animation: motion-fade-up var(--motion-duration) var(--motion-ease) calc(var(--motion-delay, 0ms) + var(--motion-group-offset, 0ms)) backwards;
 }
@@ -51,6 +62,35 @@
 [data-motion="scale"].motion-entering { animation-name: motion-scale-in; }
 [data-motion="mask"].motion-entering { animation-name: motion-mask-in; }
 [data-motion="line"].motion-entering { animation-name: motion-line-in; }
+.discovery-card[data-motion="about-tile"].motion-entering {
+  animation-name: motion-about-tile-in;
+  animation-duration: 700ms;
+}
+
+.discovery-card[data-motion="about-tile"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 2px;
+  border-radius: 0;
+  background: linear-gradient(90deg, transparent, var(--primary-cyan), transparent);
+  opacity: 0;
+  transform: translateX(-100%);
+  transition: none;
+  animation: none;
+  pointer-events: none;
+}
+
+.discovery-card[data-motion="about-tile"].motion-entering::before {
+  animation: motion-about-edge-sweep 700ms ease calc(var(--motion-delay, 0ms) + var(--motion-group-offset, 0ms)) both;
+}
+
+.discovery-card[data-motion="about-tile"].motion-entering .icon-wrapper {
+  animation: motion-about-icon-in 520ms var(--motion-ease) calc(var(--motion-delay, 0ms) + var(--motion-group-offset, 0ms) + 110ms) backwards;
+}
 
 @keyframes motion-fade-up {
   from { opacity: 0; transform: translate3d(0, var(--motion-distance), 0); }
@@ -75,6 +115,23 @@
 @keyframes motion-line-in {
   from { opacity: 0; transform: scaleX(0.12); }
   to { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes motion-about-tile-in {
+  from { opacity: 0; transform: perspective(900px) rotateX(var(--about-tilt)) translate3d(0, var(--about-lift), 0); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes motion-about-icon-in {
+  from { opacity: 0; transform: translate3d(-9px, 5px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes motion-about-edge-sweep {
+  0% { opacity: 0; transform: translateX(-100%); }
+  25% { opacity: 0.55; }
+  75% { opacity: 0.55; }
+  100% { opacity: 0; transform: translateX(100%); }
 }
 
 /* The original grid remains fixed. This small composited light moves only
@@ -153,6 +210,24 @@
   .project-case-visual {
     --motion-group-offset: 140ms;
   }
+
+  .discovery-card[data-motion="about-tile"] {
+    --about-tilt: 3deg;
+    --about-lift: 8px;
+  }
+
+  .discovery-card[data-motion="about-tile"].motion-entering {
+    animation-duration: 500ms;
+  }
+
+  .discovery-card[data-motion="about-tile"].motion-entering .icon-wrapper {
+    animation-duration: 340ms;
+    animation-delay: calc(var(--motion-delay, 0ms) + var(--motion-group-offset, 0ms) + 80ms);
+  }
+
+  .discovery-card[data-motion="about-tile"].motion-entering::before {
+    animation: none;
+  }
 }
 
 @media (max-width: 968px) {
@@ -173,6 +248,11 @@
     transform: none !important;
     filter: none !important;
     clip-path: none !important;
+    animation: none !important;
+  }
+
+  .discovery-card[data-motion="about-tile"]::before,
+  .discovery-card[data-motion="about-tile"].motion-entering .icon-wrapper {
     animation: none !important;
   }
 }

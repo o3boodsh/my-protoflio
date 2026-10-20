@@ -67,7 +67,7 @@ export default function MotionController() {
       if (animate && wasPending && !reducedMotion.matches) {
         element.classList.add("motion-entering");
         const onEnd = (event) => {
-          if (event.target !== element) return;
+          if (event.target !== element || event.pseudoElement) return;
           element.classList.remove("motion-entering");
           element.removeEventListener("animationend", onEnd);
           endHandlers.delete(element);

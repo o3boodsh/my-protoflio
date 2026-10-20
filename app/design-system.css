@@ -688,6 +688,19 @@ button {
   height: 350px;
 }
 
+.experience-companion::before {
+  content: "";
+  position: absolute;
+  inset: 18% 10%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center,
+    color-mix(in srgb, var(--primary-cyan) 11%, transparent) 0%,
+    color-mix(in srgb, var(--blue-accent) 5%, transparent) 46%,
+    transparent 73%);
+  pointer-events: none;
+}
+
 .timeline-rows {
   gap: 2rem;
 }

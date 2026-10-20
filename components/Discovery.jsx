@@ -16,25 +16,25 @@ export default function Discovery() {
         <a href="#experiences" className="btn-primary" data-motion="fade">Explore More <i data-lucide="arrow-right"></i></a>
       </div>
       <div className="discovery-grid" data-motion-group>
-        <div className="discovery-card" data-motion="scale">
+        <div className="discovery-card" data-motion="about-tile">
           <div className="icon-wrapper"><i data-lucide="graduation-cap" size="24"></i></div>
           <div className="stat-number">90.7</div>
           <div className="stat-label">GPA Score</div>
           <div className="stat-desc">Excellent Graduate Honor</div>
         </div>
-        <div className="discovery-card" data-motion="scale">
+        <div className="discovery-card" data-motion="about-tile">
           <div className="icon-wrapper"><i data-lucide="cpu" size="24"></i></div>
           <div className="stat-number">8+</div>
           <div className="stat-label">Projects Built</div>
           <div className="stat-desc">Web, AI & systems projects</div>
         </div>
-        <div className="discovery-card" data-motion="scale">
+        <div className="discovery-card" data-motion="about-tile">
           <div className="icon-wrapper"><i data-lucide="presentation" size="24"></i></div>
           <div className="stat-number">TA</div>
           <div className="stat-label">Teaching Assistant</div>
           <div className="stat-desc">Islamic University of Gaza</div>
         </div>
-        <div className="discovery-card" data-motion="scale">
+        <div className="discovery-card" data-motion="about-tile">
           <div className="icon-wrapper"><i data-lucide="bot" size="24"></i></div>
           <div className="stat-number">AI</div>
           <div className="stat-label">Academic Chatbot</div>

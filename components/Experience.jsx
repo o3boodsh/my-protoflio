@@ -11,7 +11,6 @@ export default function Experience() {
 
         <div className="timeline-row" id="experience-ai" data-tech="AI" data-motion="fade">
           <span className="timeline-dot"></span>
-          <span className="exp-side-label" aria-hidden="true">EXPERIENCE<span className="side-label-dot">.</span></span>
           <div className="exp-card">
             <span className="exp-icon"><i data-lucide="graduation-cap" size="18"></i></span>
             <div className="exp-date">Current</div>
