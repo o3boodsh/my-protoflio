@@ -241,7 +241,7 @@ export default function ClientEffects() {
           const envParticles = new THREE.Points(envParticlesGeo, envParticlesMat);
           scene.add(envParticles);
 
-          function createTextPlane(text, color = '#00f3ff', size = 2.4) {
+          function createTextPlane(text, color = '#ffffff', size = 2.4) {
             const canvas = document.createElement('canvas');
             canvas.width = 1024; canvas.height = 256;
             const ctx = canvas.getContext('2d');
@@ -249,7 +249,7 @@ export default function ClientEffects() {
             ctx.font = '900 80px "Inter", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.shadowColor = 'rgba(0, 243, 255, 0.9)';
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
             ctx.shadowBlur = 16;
             ctx.fillText(text, canvas.width / 2, canvas.height / 2);
             const texture = new THREE.CanvasTexture(canvas);
@@ -271,7 +271,7 @@ export default function ClientEffects() {
             { text: 'Data Analysis', pos: [2.2, 1.6, 0], rot: [0, -Math.PI / 2, 0] }
           ];
           texts.forEach(({ text, pos, rot }) => {
-            const mesh = createTextPlane(text, '#00f3ff', 2.5);
+            const mesh = createTextPlane(text, '#ffffff', 2.5);
             mesh.position.set(pos[0], pos[1], pos[2]);
             mesh.rotation.set(rot[0], rot[1], rot[2]);
             mesh.userData = { initialY: pos[1] };
@@ -296,8 +296,8 @@ export default function ClientEffects() {
             return geo;
           }
 
-          const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.6, roughness: 0.2 });
-          const jointsMaterial = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.2 });
+          const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x203c52, metalness: 0.45, roughness: 0.32 });
+          const jointsMaterial = new THREE.MeshStandardMaterial({ color: 0x0d1b29, metalness: 0.6, roughness: 0.3 });
           const visorMaterial = new THREE.MeshStandardMaterial({ color: 0x020813, metalness: 0.9, roughness: 0.1 });
           const cyanGlowMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
           const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -345,8 +345,8 @@ export default function ClientEffects() {
             const ctx = canvas.getContext('2d');
             const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
             grad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-            grad.addColorStop(0.25, 'rgba(0, 243, 255, 0.5)');
-            grad.addColorStop(0.65, 'rgba(0, 200, 255, 0.15)');
+            grad.addColorStop(0.25, 'rgba(255, 255, 255, 0.5)');
+            grad.addColorStop(0.65, 'rgba(255, 255, 255, 0.15)');
             grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, 64, 64);
@@ -533,7 +533,7 @@ export default function ClientEffects() {
               posArr[i * 3] = p.x; posArr[i * 3 + 1] = p.y; posArr[i * 3 + 2] = p.z;
             }
             smokeParticles.geometry.attributes.position.needsUpdate = true;
-            cloudLight.intensity = 4.0 + Math.sin(elapsedTime * 3) * 0.8;
+            cloudLight.intensity = (document.documentElement.dataset.theme === 'light' ? 1.8 : 3.0) + Math.sin(elapsedTime * 3) * 0.4;
             textMeshes.forEach((mesh, index) => { mesh.position.y = mesh.userData.initialY + Math.sin(elapsedTime * 2 + index) * 0.06; });
 
             headGroup.getWorldPosition(headWorldPos);
@@ -560,13 +560,34 @@ export default function ClientEffects() {
           }
           const updateTheme = () => {
             const isLight = document.documentElement.dataset.theme === 'light';
-            ambientLight.intensity = isLight ? 0.7 : 0.4;
-            mainLight.intensity = isLight ? 1.4 : 1.2;
-            cornerLight.intensity = isLight ? 2.4 : 3.5;
-            cornerLight.color.setHex(isLight ? 0x168db5 : 0x00f3ff);
-            bodyMaterial.color.setHex(isLight ? 0xbacbd9 : 0xe2e8f0);
-            cyanGlowMat.color.setHex(isLight ? 0x087fa8 : 0x00f3ff);
-            envParticlesMat.opacity = isLight ? 0.35 : 0.5;
+            const palette = getComputedStyle(document.documentElement);
+            const accent = palette.getPropertyValue('--primary-cyan').trim();
+            const secondary = palette.getPropertyValue('--blue-accent').trim();
+            ambientLight.color.setHex(0xdceeff);
+            ambientLight.intensity = isLight ? 0.8 : 0.85;
+            mainLight.color.setHex(0xe5f5ff);
+            mainLight.intensity = isLight ? 2.3 : 2.4;
+            cornerLight.intensity = isLight ? 2.0 : 3.0;
+            cornerLight.color.set(accent);
+            bodyMaterial.color.setHex(isLight ? 0x14677b : 0x203c52);
+            bodyMaterial.metalness = isLight ? 0.28 : 0.45;
+            bodyMaterial.roughness = isLight ? 0.3 : 0.32;
+            bodyMaterial.emissive.setHex(isLight ? 0x03212b : 0x081c2a);
+            bodyMaterial.emissiveIntensity = isLight ? 0.18 : 0.35;
+            jointsMaterial.color.setHex(isLight ? 0x102b3b : 0x0d1b29);
+            visorMaterial.color.setHex(0x030c16);
+            cyanGlowMat.color.set(isLight ? '#63e4ef' : accent);
+            eyeMat.color.setHex(0xdaf8ff);
+            lightOrb.material.color.set(accent);
+            outerRing1.material.color.set(accent);
+            outerRing2.material.color.set(secondary);
+            coreEngineGlow.material.color.set(accent);
+            cloudLight.color.set(accent);
+            smokeMat.color.set(accent);
+            smokeMat.opacity = isLight ? 0.38 : 0.5;
+            envParticlesMat.color.set(accent);
+            envParticlesMat.opacity = isLight ? 0.25 : 0.4;
+            textMeshes.forEach((mesh) => mesh.material.color.set(accent));
             sceneLoop?.renderOnce();
           };
           window.addEventListener('portfolio:themechange', updateTheme);

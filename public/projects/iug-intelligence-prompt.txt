@@ -1,0 +1,5 @@
+Generation method: built-in image_gen tool
+Asset: iug-intelligence.webp (1536 x 1024)
+Purpose: Original concept artwork, not a screenshot of the product.
+
+Use case: stylized-concept. Create a premium landscape 3:2 portfolio project cover for 'IUG Intelligence', an academic AI chatbot. Sophisticated art-directed 3D render, midnight navy background, luminous frosted-glass cyan chat bubble surrounding an elegant abstract knowledge core, several floating translucent document sheets and subtle connected nodes suggesting university knowledge retrieval. Restrained teal and ice-blue with a little violet, beautiful soft studio shadows, tactile glass and satin metal, sharp polished editorial design. Large main sculptural object on right two thirds, spacious typography on left reading exactly 'IUG' then 'Intelligence' and small subtitle 'Academic AI Assistant'. Generous safe margins, crisp legible type. Concept artwork, not a screenshot, no fake app interface, no university seal, no robot face, no busy code, no sweeping light beam, no watermark. Visually striking and calm, professional technology product campaign.
