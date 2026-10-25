@@ -1,0 +1,18 @@
+.hero-sculpture{height:min(700px,73vh);min-height:545px;position:relative;overflow:visible;isolation:isolate;touch-action:pan-y;cursor:grab;user-select:none}.hero-sculpture.grabbing{cursor:grabbing}.hero-sculpture .glowA,.hero-sculpture .glowB{pointer-events:none;position:absolute;border-radius:50%;filter:blur(30px);will-change:transform}.hero-sculpture .glowA{width:78%;height:65%;left:10%;top:17%;background:radial-gradient(ellipse,rgba(68,162,233,.27),rgba(119,110,230,.09) 53%,transparent 72%);animation:breath 8s ease-in-out infinite}.hero-sculpture .glowB{width:54%;height:51%;left:37%;top:29%;background:radial-gradient(ellipse,rgba(136,95,243,.16),transparent 70%);animation:breath 7s ease-in-out infinite reverse}@keyframes breath{50%{transform:scale(1.16) translate(8px,-3px);opacity:.7}}.hero-sculpture [data-webgl]{position:absolute;width:100%;height:100%;inset:0;display:block;z-index:2;filter:drop-shadow(0 28px 38px rgba(22,85,136,.20));}.hero-sculpture [data-fx]{position:absolute;width:100%;height:100%;inset:0;display:block;z-index:3;pointer-events:none;}.hero-sculpture .coordinates{position:absolute;inset:6% 1%;pointer-events:none;z-index:4}.hero-sculpture .corner{width:21px;height:21px;position:absolute;opacity:.55}.hero-sculpture .corner.a{top:17%;left:11%;border-top:1px solid #92c5dc;border-left:1px solid #92c5dc}.hero-sculpture .corner.b{top:17%;right:5%;border-top:1px solid #92c5dc;border-right:1px solid #92c5dc}.hero-sculpture .corner.c{bottom:16%;left:11%;border-bottom:1px solid #92c5dc;border-left:1px solid #92c5dc}.hero-sculpture .corner.d{bottom:16%;right:5%;border-bottom:1px solid #92c5dc;border-right:1px solid #92c5dc}.hero-sculpture .burstflash{position:absolute;inset:14%;pointer-events:none;z-index:1;border-radius:100%;background:radial-gradient(circle,rgba(255,255,255,.7),rgba(19,172,229,.4) 12%,rgba(63,106,246,.2) 32%,transparent 70%);opacity:0;transform:scale(.3)}.hero-sculpture .burstflash.on{animation:burst 1.5s ease-out both}@keyframes burst{0%{opacity:.95;transform:scale(.24)}85%{opacity:0;transform:scale(1.5)}100%{opacity:0;transform:scale(1.7)}}
+
+
+.hero-section:has(.hero-sculpture) { display:grid; grid-template-columns:minmax(0,1.08fr) minmax(0,1fr); align-items:center; gap:1rem; }
+.hero-section:has(.hero-sculpture) .hero-content { width:100%; }
+.hero-section .hero-sculpture { width:100%; height:clamp(460px,44vw,650px); min-height:0; min-width:0; }
+.hero-sculpture .sculpture-tech-label {
+  position:absolute; left:0; top:0; z-index:5; pointer-events:none;
+  padding:8px 13px; border:1px solid rgba(140,236,255,.3); border-radius:999px;
+  background:rgba(8,23,36,.88); color:#c9f5ff;
+  font-size:12px; font-weight:650; letter-spacing:.02em; white-space:nowrap;
+  box-shadow:0 4px 22px rgba(3,12,25,.18); backdrop-filter:blur(10px);
+  will-change:transform;
+}
+[data-theme="light"] .hero-sculpture .sculpture-tech-label { background:rgba(245,252,255,.9); color:#175979; border-color:rgba(60,151,190,.4); }
+@media(max-width:968px) { .hero-section:has(.hero-sculpture) { grid-template-columns:1fr; } .hero-section .hero-sculpture { width:min(100%,620px); height:540px; margin:0 auto; } }
+@media(max-width:620px) { .hero-section .hero-sculpture { height:400px; } .hero-sculpture .sculpture-tech-label { font-size:10px; padding:6px 10px; } }
+@media(prefers-reduced-motion:reduce) { .hero-sculpture *, .hero-sculpture *::before { animation:none!important;transition:none!important; } }

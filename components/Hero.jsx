@@ -1,4 +1,4 @@
-import HeroOrbital from "@/components/HeroOrbital";
+import HeroSculpture from "@/components/HeroSculpture";
 
 export default function Hero() {
   return (
@@ -52,17 +52,7 @@ export default function Hero() {
         </nav>
       </div>
 
-      <div
-        className="hero-visual-stage hero-reveal hero-reveal--visual"
-        role="img"
-        aria-label="A glowing code core with React, Next.js, Python, and AI orbiting along two animated rings"
-      >
-        <div className="hero-visual-mesh"></div>
-        <div className="hero-visual-orbit hero-visual-orbit--outer"></div>
-        <div className="hero-visual-orbit hero-visual-orbit--inner"></div>
-        <div className="hero-visual-core"></div>
-        <HeroOrbital />
-      </div>
+      <HeroSculpture />
 
       <a href="#discovery" className="hero-scroll-indicator hero-reveal hero-reveal--scroll" aria-label="Scroll to About section">
         <span className="hero-scroll-line" aria-hidden="true"></span>
